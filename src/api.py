@@ -9,25 +9,41 @@ from fastapi.responses import FileResponse
 from jwt import InvalidTokenError
 from pydantic import BaseModel
 
-from src.application.ai_matcher import calculate_ai_scores
-from src.application.auth import create_token, decode_token, hash_password, verify_password
-from src.application.matcher import rank_jobs
-from src.config import ALLOWED_ORIGINS, MAX_UPLOAD_SIZE_BYTES
-from src.infrastructure import cache as job_cache
-from src.infrastructure.job_aggregator import fetch_all_jobs
-from src.infrastructure.resume_parser import determine_career_info, extract_text_from_pdf
-from src.infrastructure.storage import get_storage
+try:
+    from src.application.ai_matcher import calculate_ai_scores
+    from src.application.auth import create_token, decode_token, hash_password, verify_password
+    from src.application.matcher import rank_jobs
+    from src.config import ALLOWED_ORIGINS, MAX_UPLOAD_SIZE_BYTES
+    from src.infrastructure import cache as job_cache
+    from src.infrastructure.job_aggregator import fetch_all_jobs
+    from src.infrastructure.resume_parser import determine_career_info, extract_text_from_pdf
+    from src.infrastructure.storage import get_storage
+except ImportError:
+    from application.ai_matcher import calculate_ai_scores
+    from application.auth import create_token, decode_token, hash_password, verify_password
+    from matcher import rank_jobs
+    from config import ALLOWED_ORIGINS, MAX_UPLOAD_SIZE_BYTES
+    from infrastructure import cache as job_cache
+    from infrastructure.job_aggregator import fetch_all_jobs
+    from infrastructure.resume_parser import determine_career_info, extract_text_from_pdf
+    from infrastructure.storage import get_storage
 
-app = FastAPI()
+app = FastAPI(title="Job Finder API")
 storage = get_storage()
 
+# CORS configuration
+# In production, ALLOWED_ORIGINS should contain the Netlify URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS else ["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "environment": os.getenv("ENV", "development")}
 
 UPLOAD_DIR = "uploads"
 Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
