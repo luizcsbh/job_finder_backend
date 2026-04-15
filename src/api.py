@@ -54,6 +54,12 @@ class UserAuth(BaseModel):
     password: str
 
 
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    name: str
+
+
 class ResetPasswordRequest(BaseModel):
     current_password: str
     new_password: str
@@ -78,19 +84,33 @@ def get_user_profile(authorization: str = Header(None)):
 
     return {
         "email": user["email"],
+        "name": user.get("name"),
+        "birth_date": user.get("birth_date"),
         "has_resume": bool(resume_path),
         "analysis": analysis,
     }
 
 
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    birth_date: Optional[str] = None
+
+
+@app.put("/profile")
+def update_profile(data: ProfileUpdateRequest, authorization: str = Header(None)):
+    user_id = _get_authenticated_user_id(authorization)
+    storage.update_user_profile(user_id, data.name, data.birth_date)
+    return {"message": "Perfil atualizado com sucesso"}
+
+
 @app.post("/register")
-def register(user: UserAuth):
+def register(user: UserRegister):
     _validate_credentials_input(user.email, user.password)
 
     if storage.get_user_by_email(user.email):
         raise HTTPException(status_code=400, detail="Usuário já cadastrado")
 
-    storage.create_user(user.email, hash_password(user.password))
+    storage.create_user(user.email, hash_password(user.password), user.name)
     return {"message": "Usuário criado"}
 
 
@@ -137,7 +157,7 @@ def clear_cache(source: str = None, authorization: str = Header(None)):
 
 
 @app.get("/jobs")
-def get_jobs(page: int = 1, limit: int = 9, authorization: str = Header(None)):
+def get_jobs(page: int = 1, limit: int = 9, search: str = None, authorization: str = Header(None)):
     if page < 1 or limit < 1 or limit > 100:
         raise HTTPException(status_code=400, detail="Parâmetros de paginação inválidos")
 
@@ -161,6 +181,13 @@ def get_jobs(page: int = 1, limit: int = 9, authorization: str = Header(None)):
         jobs_with_ai = [job for job in ranked]
         for job in jobs_with_ai:
             job.ai_score = 0
+
+    if search:
+        search_lower = search.lower().strip()
+        jobs_with_ai = [
+            job for job in jobs_with_ai
+            if search_lower in job.title.lower() or search_lower in job.company.lower()
+        ]
 
     start = (page - 1) * limit
     end = start + limit

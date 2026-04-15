@@ -23,11 +23,15 @@ class StorageRepository(ABC):
         pass
 
     @abstractmethod
-    def create_user(self, email, password):
+    def create_user(self, email, password, name=None):
         pass
 
     @abstractmethod
     def update_user_password(self, email, new_password):
+        pass
+
+    @abstractmethod
+    def update_user_profile(self, user_id, name, birth_date):
         pass
 
     @abstractmethod
@@ -55,9 +59,20 @@ class SQLiteStorage(StorageRepository):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE,
             password TEXT,
-            resume_path TEXT
+            resume_path TEXT,
+            name TEXT,
+            birth_date TEXT
         )
         """)
+        
+        try:
+            self.cursor.execute("ALTER TABLE users ADD COLUMN name TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            self.cursor.execute("ALTER TABLE users ADD COLUMN birth_date TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS favorites (
@@ -70,24 +85,28 @@ class SQLiteStorage(StorageRepository):
         self.conn.commit()
 
     def get_user_by_id(self, user_id):
-        self.cursor.execute("SELECT id, email, password, resume_path FROM users WHERE id=?", (user_id,))
+        self.cursor.execute("SELECT id, email, password, resume_path, name, birth_date FROM users WHERE id=?", (user_id,))
         row = self.cursor.fetchone()
         return _map_sqlite_user(row)
 
     def get_user_by_email(self, email):
-        self.cursor.execute("SELECT id, email, password, resume_path FROM users WHERE email=?", (email,))
+        self.cursor.execute("SELECT id, email, password, resume_path, name, birth_date FROM users WHERE email=?", (email,))
         row = self.cursor.fetchone()
         return _map_sqlite_user(row)
 
-    def create_user(self, email, password):
+    def create_user(self, email, password, name=None):
         self.cursor.execute(
-            "INSERT INTO users (email, password) VALUES (?, ?)",
-            (email, password)
+            "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
+            (email, password, name)
         )
         self.conn.commit()
 
     def update_user_password(self, email, new_password):
         self.cursor.execute("UPDATE users SET password=? WHERE email=?", (new_password, email))
+        self.conn.commit()
+
+    def update_user_profile(self, user_id, name, birth_date):
+        self.cursor.execute("UPDATE users SET name=?, birth_date=? WHERE id=?", (name, birth_date, user_id))
         self.conn.commit()
 
     def update_user_resume_path(self, user_id, resume_path):
@@ -128,7 +147,7 @@ class SupabaseStorage(StorageRepository):
     def get_user_by_id(self, user_id):
         response = (
             self.client.table(SUPABASE_USERS_TABLE)
-            .select("id, email, password, resume_path")
+            .select("id, email, password, resume_path, name, birth_date")
             .eq("id", user_id)
             .limit(1)
             .execute()
@@ -138,17 +157,18 @@ class SupabaseStorage(StorageRepository):
     def get_user_by_email(self, email):
         response = (
             self.client.table(SUPABASE_USERS_TABLE)
-            .select("id, email, password, resume_path")
+            .select("id, email, password, resume_path, name, birth_date")
             .eq("email", email)
             .limit(1)
             .execute()
         )
         return _first_or_none(response.data)
 
-    def create_user(self, email, password):
+    def create_user(self, email, password, name=None):
         self.client.table(SUPABASE_USERS_TABLE).insert({
             "email": email,
-            "password": password
+            "password": password,
+            "name": name
         }).execute()
 
     def update_user_password(self, email, new_password):
@@ -156,6 +176,14 @@ class SupabaseStorage(StorageRepository):
             self.client.table(SUPABASE_USERS_TABLE)
             .update({"password": new_password})
             .eq("email", email)
+            .execute()
+        )
+
+    def update_user_profile(self, user_id, name, birth_date):
+        (
+            self.client.table(SUPABASE_USERS_TABLE)
+            .update({"name": name, "birth_date": birth_date})
+            .eq("id", user_id)
             .execute()
         )
 
@@ -215,7 +243,9 @@ def _map_sqlite_user(row):
         "id": row[0],
         "email": row[1],
         "password": row[2],
-        "resume_path": row[3]
+        "resume_path": row[3],
+        "name": row[4],
+        "birth_date": row[5]
     }
 
 
