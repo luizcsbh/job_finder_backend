@@ -7,3 +7,5 @@ pypdf
 numpy
 scikit-learn
 supabase
+python-multipart
+httpx
