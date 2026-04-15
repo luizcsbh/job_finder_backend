@@ -4,7 +4,7 @@ import src.api as api_module
 
 
 def register_and_login(client, email="user@example.com", password="StrongPass123"):
-    register = client.post("/register", json={"email": email, "password": password})
+    register = client.post("/register", json={"email": email, "password": password, "name": "Test User"})
     assert register.status_code == 200
 
     login = client.post("/login", json={"email": email, "password": password})
@@ -14,7 +14,7 @@ def register_and_login(client, email="user@example.com", password="StrongPass123
 
 
 def test_register_hashes_password_and_profile_hides_sensitive_fields(client):
-    client.post("/register", json={"email": "hash@example.com", "password": "StrongPass123"})
+    client.post("/register", json={"email": "hash@example.com", "password": "StrongPass123", "name": "Hash User"})
 
     stored_user = api_module.storage.get_user_by_email("hash@example.com")
     assert stored_user is not None
