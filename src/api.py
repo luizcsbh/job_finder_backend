@@ -181,7 +181,12 @@ def forgot_password(data: ForgotPasswordRequest):
         raise HTTPException(status_code=404, detail="E-mail não encontrado na nossa base")
 
     if hasattr(storage, "send_password_reset_email"):
-        storage.send_password_reset_email(data.email)
+        try:
+            # Use first allowed origin as redirect base
+            redirect_url = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else None
+            storage.send_password_reset_email(data.email, redirect_url=redirect_url)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
     else:
         raise HTTPException(status_code=501, detail="Recurso não suportado para este provedor")
         

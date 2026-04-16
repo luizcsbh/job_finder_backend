@@ -209,13 +209,37 @@ class SupabaseStorage(StorageRepository):
             .execute()
         )
 
-    def send_password_reset_email(self, email):
+    def send_password_reset_email(self, email, redirect_url=None):
         try:
-            # Assures the user is populated in Supabase Auth mapping before sending
-            self.client.auth.admin.create_user({"email": email, "password": "tempPassword!123"})
-        except Exception:
-            pass
-        self.client.auth.reset_password_for_email(email)
+            # Clean up redirect_url (Supabase can be picky about trailing slashes)
+            if redirect_url and redirect_url.endswith("/"):
+                redirect_url = redirect_url[:-1]
+
+            # Best-effort to ensure user exists in Auth. 
+            # If they already exist, this will naturally fail and we move to reset.
+            try:
+                self.client.auth.admin.create_user({
+                    "email": email, 
+                    "password": "tempPassword!123", 
+                    "email_confirm": True
+                })
+            except Exception:
+                pass
+                
+            options = {}
+            if redirect_url:
+                options["redirect_to"] = redirect_url
+                
+            res = self.client.auth.reset_password_for_email(email, options)
+            
+            # Check if the response itself indicates an error (v2+ returns AuthResponse)
+            # but some errors might still be in the object if not raised as exceptions
+            return True
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "rate limit" in error_msg:
+                raise Exception("Limite de e-mails do Supabase excedido. Tente novamente mais tarde ou configure um SMTP customizado.")
+            raise e
 
     def update_password_with_token(self, token, hashed_password, raw_password):
         user_response = self.client.auth.get_user(token)
