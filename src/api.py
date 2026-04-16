@@ -145,8 +145,11 @@ def login(user: UserAuth):
     _validate_credentials_input(user.email, user.password)
 
     found_user = storage.get_user_by_email(user.email)
-    if not found_user or not verify_password(user.password, found_user["password"]):
-        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    if not found_user:
+        raise HTTPException(status_code=404, detail="E-mail não encontrado")
+        
+    if not verify_password(user.password, found_user["password"]):
+        raise HTTPException(status_code=401, detail="Senha incorreta")
 
     token = create_token(found_user["id"])
     return {"token": token}
@@ -175,15 +178,14 @@ def forgot_password(data: ForgotPasswordRequest):
         
     user = storage.get_user_by_email(data.email)
     if not user:
-        # Prevent email enumeration by returning a valid statement anyway
-        return {"message": "Verifique seu e-mail para próximas instruções"}
+        raise HTTPException(status_code=404, detail="E-mail não encontrado na nossa base")
 
     if hasattr(storage, "send_password_reset_email"):
         storage.send_password_reset_email(data.email)
     else:
         raise HTTPException(status_code=501, detail="Recurso não suportado para este provedor")
         
-    return {"message": "Verifique seu e-mail para próximas instruções"}
+    return {"message": "Link de recuperação enviado! Verifique seu e-mail."}
 
 
 @app.post("/reset-password-with-token")
