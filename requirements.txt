@@ -9,3 +9,4 @@ scikit-learn
 supabase
 python-multipart
 httpx
+gunicorn
