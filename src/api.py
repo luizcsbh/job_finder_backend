@@ -60,8 +60,17 @@ class UserRegister(BaseModel):
     name: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
 class ResetPasswordRequest(BaseModel):
     current_password: str
+    new_password: str
+
+
+class ResetPasswordWithTokenRequest(BaseModel):
+    token: str
     new_password: str
 
 
@@ -140,6 +149,41 @@ def reset_password(data: ResetPasswordRequest, authorization: str = Header(None)
 
     storage.update_user_password(user["email"], hash_password(data.new_password))
     return {"message": "Senha alterada com sucesso"}
+
+
+@app.post("/forgot-password")
+def forgot_password(data: ForgotPasswordRequest):
+    if not data.email or "@" not in data.email:
+        raise HTTPException(status_code=400, detail="E-mail inválido")
+        
+    user = storage.get_user_by_email(data.email)
+    if not user:
+        # Prevent email enumeration by returning a valid statement anyway
+        return {"message": "Verifique seu e-mail para próximas instruções"}
+
+    if hasattr(storage, "send_password_reset_email"):
+        storage.send_password_reset_email(data.email)
+    else:
+        raise HTTPException(status_code=501, detail="Recurso não suportado para este provedor")
+        
+    return {"message": "Verifique seu e-mail para próximas instruções"}
+
+
+@app.post("/reset-password-with-token")
+def reset_password_with_token(data: ResetPasswordWithTokenRequest):
+    _validate_password_strength(data.new_password)
+    
+    if not hasattr(storage, "update_password_with_token"):
+        raise HTTPException(status_code=501, detail="Recurso não suportado para este provedor")
+        
+    try:
+        success = storage.update_password_with_token(data.token, hash_password(data.new_password), data.new_password)
+        if not success:
+            raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+        
+    return {"message": "Senha recuperada com sucesso!"}
 
 
 @app.get("/cache/status")

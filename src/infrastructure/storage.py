@@ -165,6 +165,11 @@ class SupabaseStorage(StorageRepository):
         return _first_or_none(response.data)
 
     def create_user(self, email, password, name=None):
+        try:
+            self.client.auth.sign_up({"email": email, "password": password})
+        except Exception:
+            pass # Best effort to mirror auth table for password resets
+
         self.client.table(SUPABASE_USERS_TABLE).insert({
             "email": email,
             "password": password,
@@ -194,6 +199,31 @@ class SupabaseStorage(StorageRepository):
             .eq("id", user_id)
             .execute()
         )
+
+    def send_password_reset_email(self, email):
+        try:
+            # Assures the user is populated in Supabase Auth mapping before sending
+            self.client.auth.admin.create_user({"email": email, "password": "tempPassword!123"})
+        except Exception:
+            pass
+        self.client.auth.reset_password_for_email(email)
+
+    def update_password_with_token(self, token, hashed_password, raw_password):
+        user_response = self.client.auth.get_user(token)
+        if not user_response or not user_response.user:
+            return False
+            
+        email = user_response.user.email
+        # Update our tracking table
+        self.update_user_password(email, hashed_password)
+        
+        # Best effort mapping back into native Supabase auth.users for consistency
+        try:
+            self.client.auth.admin.update_user_by_id(user_response.user.id, {"password": raw_password})
+        except Exception:
+            pass
+            
+        return True
 
     def get_favorite_urls(self, user_id):
         response = (
