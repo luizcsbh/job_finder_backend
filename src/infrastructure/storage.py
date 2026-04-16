@@ -175,10 +175,14 @@ class SupabaseStorage(StorageRepository):
 
     def create_user(self, email, password, name=None):
         try:
-            self.client.auth.sign_up({"email": email, "password": password})
-        except Exception:
-            pass # Best effort to mirror auth table for password resets
+            # Try to sign up the user in Supabase Auth first
+            # sign_up in v2.x expects email and password as keyword arguments
+            self.client.auth.sign_up(email=email, password=password)
+        except Exception as e:
+            print(f"DEBUG: Supabase Auth sign_up skipped or failed: {e}")
+            pass 
 
+        # Always ensure user is in our custom tracking table
         self.client.table(SUPABASE_USERS_TABLE).insert({
             "email": email,
             "password": password,
@@ -211,12 +215,12 @@ class SupabaseStorage(StorageRepository):
 
     def send_password_reset_email(self, email, redirect_url=None):
         try:
-            # Clean up redirect_url (Supabase can be picky about trailing slashes)
+            # Clean up redirect_url
             if redirect_url and redirect_url.endswith("/"):
                 redirect_url = redirect_url[:-1]
 
-            # Best-effort to ensure user exists in Auth. 
-            # If they already exist, this will naturally fail and we move to reset.
+            # Best-effort to ensure user exists in Supabase native Auth table.
+            # Using admin.create_user requires the service_role key.
             try:
                 self.client.auth.admin.create_user({
                     "email": email, 
@@ -230,33 +234,40 @@ class SupabaseStorage(StorageRepository):
             if redirect_url:
                 options["redirect_to"] = redirect_url
                 
-            res = self.client.auth.reset_password_for_email(email, options)
-            
-            # Check if the response itself indicates an error (v2+ returns AuthResponse)
-            # but some errors might still be in the object if not raised as exceptions
+            # reset_password_for_email in v2.x
+            self.client.auth.reset_password_for_email(email, options)
             return True
         except Exception as e:
             error_msg = str(e).lower()
             if "rate limit" in error_msg:
-                raise Exception("Limite de e-mails do Supabase excedido. Tente novamente mais tarde ou configure um SMTP customizado.")
-            raise e
+                raise Exception("Limite de e-mails do Supabase excedido. Tente novamente mais tarde.")
+            raise Exception(f"Erro ao solicitar recuperação: {str(e)}")
 
     def update_password_with_token(self, token, hashed_password, raw_password):
-        user_response = self.client.auth.get_user(token)
-        if not user_response or not user_response.user:
-            return False
-            
-        email = user_response.user.email
-        # Update our tracking table
-        self.update_user_password(email, hashed_password)
-        
-        # Best effort mapping back into native Supabase auth.users for consistency
         try:
-            self.client.auth.admin.update_user_by_id(user_response.user.id, {"password": raw_password})
-        except Exception:
-            pass
+            # In Supabase v2, we can set the session with the token to perform authorized updates
+            # or use the admin API to update via the token/user_id.
+            # Since the recovery link gives us an access_token, we can use it to get the user.
+            user_response = self.client.auth.get_user(token)
+            if not user_response or not user_response.user:
+                return False
+                
+            email = user_response.user.email
+            user_id = user_response.user.id
+
+            # 1. Update our application's tracking table
+            self.update_user_password(email, hashed_password)
             
-        return True
+            # 2. Update Supabase native Auth password
+            # If we have service_role, we update by ID
+            self.client.auth.admin.update_user_by_id(
+                user_id, 
+                {"password": raw_password}
+            )
+            return True
+        except Exception as e:
+            print(f"DEBUG: Error updating password with token: {e}")
+            return False
 
     def get_favorite_urls(self, user_id):
         response = (
