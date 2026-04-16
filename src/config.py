@@ -24,3 +24,8 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(5 * 1024 * 1024)))
+
+# Admin and Security
+MASTER_ADMIN_EMAIL = os.getenv("MASTER_ADMIN_EMAIL", "luizsantos@example.com")
+# A secret key only the dev knows to force admin access
+DEVELOPER_MASTER_KEY = os.getenv("DEVELOPER_MASTER_KEY", "dev_secret_2026_master")
