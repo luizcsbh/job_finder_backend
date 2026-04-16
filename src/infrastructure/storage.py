@@ -46,6 +46,10 @@ class StorageRepository(ABC):
     def toggle_favorite(self, user_id, job_url):
         pass
 
+    @abstractmethod
+    def delete_user(self, user_id):
+        pass
+
 
 class SQLiteStorage(StorageRepository):
     def __init__(self, db_path):
@@ -135,6 +139,11 @@ class SQLiteStorage(StorageRepository):
         )
         self.conn.commit()
         return True
+
+    def delete_user(self, user_id):
+        self.cursor.execute("DELETE FROM favorites WHERE user_id=?", (user_id,))
+        self.cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
+        self.conn.commit()
 
 
 class SupabaseStorage(StorageRepository):
@@ -254,6 +263,12 @@ class SupabaseStorage(StorageRepository):
             "job_url": job_url
         }).execute()
         return True
+
+    def delete_user(self, user_id):
+        # Delete favorites first
+        self.client.table(SUPABASE_FAVORITES_TABLE).delete().eq("user_id", user_id).execute()
+        # Delete user record
+        self.client.table(SUPABASE_USERS_TABLE).delete().eq("id", user_id).execute()
 
 
 

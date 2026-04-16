@@ -112,6 +112,23 @@ def update_profile(data: ProfileUpdateRequest, authorization: str = Header(None)
     return {"message": "Perfil atualizado com sucesso"}
 
 
+@app.delete("/profile")
+
+def delete_account(authorization: str = Header(None)):
+    user_id = _get_authenticated_user_id(authorization)
+    user = storage.get_user_by_id(user_id)
+    
+    if user and user["resume_path"]:
+        try:
+            if os.path.exists(user["resume_path"]):
+                os.remove(user["resume_path"])
+        except Exception as e:
+            print(f"Erro ao deletar arquivo de currículo: {e}")
+            
+    storage.delete_user(user_id)
+    return {"message": "Conta excluída com sucesso"}
+
+
 @app.post("/register")
 def register(user: UserRegister):
     _validate_credentials_input(user.email, user.password)
