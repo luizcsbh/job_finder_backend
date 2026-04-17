@@ -52,10 +52,12 @@ def perform_health_checks():
         except Exception:
             status = "offline"
             
+        last_check = datetime.utcnow().isoformat()
         health_entry = {
             "api_name": name,
             "status": status,
-            "latency_ms": latency
+            "latency_ms": latency,
+            "last_check": last_check
         }
         
         # Save or Update in Supabase api_health table
@@ -64,7 +66,7 @@ def perform_health_checks():
                 "api_name": name,
                 "status": status,
                 "latency_ms": latency,
-                "last_check": datetime.utcnow().isoformat()
+                "last_check": last_check
             }, on_conflict="api_name").execute()
         except Exception as e:
             print(f"Failed to save health for {name}: {e}")
