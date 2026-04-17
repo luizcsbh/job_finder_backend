@@ -5,13 +5,13 @@ from src.infrastructure.storage import get_storage
 
 # Sources to monitor
 SOURCES = {
-    "Remotive": "https://remotive.io/api/remote-jobs",
+    "Remotive":  "https://remotive.com/api/remote-jobs",
     "ArbeitNow": "https://www.arbeitnow.com/api/job-board-api",
-    "The Muse": "https://www.themuse.com/api/public/jobs?page=0",
-    "Jooble": "https://jooble.org/",
-    "LinkedIn": "https://www.linkedin.com/jobs/",
-    "OpenAI": "https://api.openai.com/v1/models",
-    "Supabase": "DB_PING"
+    "The Muse":  "https://www.themuse.com/api/public/jobs?page=0",
+    "Jooble":    "https://br.jooble.org/",
+    "LinkedIn":  "https://www.linkedin.com/jobs/",
+    "OpenAI":    "https://api.openai.com/v1/models",
+    "Supabase":  "DB_PING"
 }
 
 def perform_health_checks():
