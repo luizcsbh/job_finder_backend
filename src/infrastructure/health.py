@@ -90,7 +90,7 @@ def get_system_health():
         # Handle different timestamp formats from postgres
         last_check = datetime.fromisoformat(last_str.replace('Z', '+00:00'))
         
-        if datetime.now(last_check.tzinfo) - last_check > timedelta(hours=5):
+        if datetime.now(last_check.tzinfo) - last_check > timedelta(minutes=5):
             return perform_health_checks()
             
         return data
