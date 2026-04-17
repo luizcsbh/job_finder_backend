@@ -1,7 +1,7 @@
 """
-LinkedIn Jobs — via RapidAPI (linkedin-job-search-api).
-Host: linkedin-job-search-api.p.rapidapi.com
-Endpoint: GET /active-jb-1h
+JSearch API — via RapidAPI (covers LinkedIn and others).
+Host: jsearch.p.rapidapi.com
+Endpoint: GET /search
 """
 import requests
 import os
@@ -9,39 +9,41 @@ from src.domain.job import Job
 from src.infrastructure.cache import cached
 
 RAPIDAPI_KEY  = os.getenv("RAPIDAPI_KEY", "")
-RAPIDAPI_HOST = "linkedin-job-search-api.p.rapidapi.com"
-BASE_URL      = f"https://{RAPIDAPI_HOST}/active-jb-1h"
+RAPIDAPI_HOST = "jsearch.p.rapidapi.com"
+BASE_URL      = f"https://{RAPIDAPI_HOST}/search"
 
-# Localização configurável via .env
+# Configurações via .env
+KEYWORDS = os.getenv("KEYWORDS", "developer")
 LOCATION = os.getenv("USER_LOCATION", "Brazil")
 
 HEADERS = {
     "x-rapidapi-key":  RAPIDAPI_KEY,
     "x-rapidapi-host": RAPIDAPI_HOST,
-    "Content-Type": "application/json"
 }
-
-MAX_RESULTS = 100
 
 
 @cached("linkedin")
 def fetch_jobs_linkedin() -> list[Job]:
-    """Busca vagas do LinkedIn via RapidAPI (linkedin-job-search-api)."""
+    """Busca vagas via JSearch API (inclui LinkedIn e múltiplos boards)."""
     if not RAPIDAPI_KEY or RAPIDAPI_KEY == "sua_rapidapi_key_aqui":
-        print("[LinkedIn/RapidAPI] RAPIDAPI_KEY não configurada, pulando.")
+        print("[JSearch/RapidAPI] RAPIDAPI_KEY não configurada, pulando.")
         return []
 
     all_jobs: list[Job] = []
+    
+    # Criamos uma query combinada
+    query = f"{KEYWORDS} in {LOCATION}"
 
     try:
-        # Parâmetros conforme documentação fornecida pelo usuário
         params = {
-            "limit": str(MAX_RESULTS),
-            "offset": "0",
-            "description_type": "text"
+            "query": query,
+            "page": "1",
+            "num_pages": "1",
+            "date_posted": "all",
+            "remote_jobs_only": "true" # Opcional: foca em vagas remotas
         }
         
-        print(f"[LinkedIn/RapidAPI] Buscando vagas em {RAPIDAPI_HOST}...")
+        print(f"[JSearch/RapidAPI] Buscando: '{query}'...")
         
         response = requests.get(
             BASE_URL,
@@ -49,28 +51,17 @@ def fetch_jobs_linkedin() -> list[Job]:
             params=params,
             timeout=20,
         )
-        
-        if response.status_code == 401:
-            print("[LinkedIn/RapidAPI] Erro 401: Endpoint desativado para sua assinatura ou chave inválida.")
-            return []
-            
         response.raise_for_status()
         data = response.json()
 
-        # A estrutura costuma ser uma lista diretamente ou dentro de 'jobs'/'data'
-        items = []
-        if isinstance(data, list):
-            items = data
-        elif isinstance(data, dict):
-            items = data.get("jobs") or data.get("data") or data.get("results") or []
+        items = data.get("data", [])
 
         for item in items:
-            # Mapeamento flexível de campos para diferentes versões da API
-            url = item.get("job_link") or item.get("url") or item.get("jobUrl") or ""
-            title = item.get("job_title") or item.get("title") or "N/A"
-            company = item.get("company_name") or item.get("company") or "N/A"
-            location = item.get("job_location") or item.get("location") or LOCATION
-            description = item.get("job_description") or item.get("description") or f"{title} em {company}"
+            url = item.get("job_apply_link") or item.get("job_google_link") or ""
+            title = item.get("job_title") or "N/A"
+            company = item.get("employer_name") or "N/A"
+            location = f"{item.get('job_city', '')}, {item.get('job_country', '')}".strip(", ") or LOCATION
+            description = item.get("job_description") or f"{title} em {company}"
 
             if not url or title == "N/A":
                 continue
@@ -82,12 +73,12 @@ def fetch_jobs_linkedin() -> list[Job]:
                     location=location,
                     description=description,
                     url=url,
-                    source="LinkedIn",
+                    source="LinkedIn/JSearch",
                 )
             )
 
     except Exception as e:
-        print(f"[LinkedIn/RapidAPI] Erro ao buscar: {e}")
+        print(f"[JSearch/RapidAPI] Erro ao buscar: {e}")
 
     # Remove duplicatas por URL
     seen = set()
@@ -97,5 +88,5 @@ def fetch_jobs_linkedin() -> list[Job]:
             seen.add(job.url)
             unique.append(job)
 
-    print(f"[LinkedIn/RapidAPI] Total único: {len(unique)} vagas")
+    print(f"[JSearch/RapidAPI] Total único: {len(unique)} vagas")
     return unique
