@@ -427,9 +427,25 @@ def _get_authenticated_user_id(authorization: Optional[str]) -> int:
         scheme, token = authorization.split(" ", 1)
         if scheme.lower() != "bearer":
             raise ValueError("invalid auth scheme")
-        decoded = decode_token(token)
-        return int(decoded["user_id"])
-    except (ValueError, KeyError, InvalidTokenError):
+
+        try:
+            decoded = decode_token(token)
+            return int(decoded["user_id"])
+        except InvalidTokenError:
+            # Fallback for Supabase auth tokens
+            if hasattr(storage, "client"):
+                try:
+                    user_response = storage.client.auth.get_user(token)
+                    user = getattr(user_response, "user", None)
+                    if user and getattr(user, "email", None):
+                        stored_user = storage.get_user_by_email(user.email)
+                        if stored_user:
+                            return int(stored_user["id"])
+                except Exception:
+                    pass
+
+            raise HTTPException(status_code=401, detail="Token inválido")
+    except (ValueError, KeyError):
         raise HTTPException(status_code=401, detail="Token inválido")
 
 
