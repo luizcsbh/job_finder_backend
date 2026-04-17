@@ -239,36 +239,8 @@ def get_admin_stats(authorization: str = Header(None)):
 @app.get("/admin/health")
 def get_api_health(authorization: str = Header(None)):
     _ensure_admin(authorization)
-    
-    import time
-    from src.infrastructure.job_aggregator import ALL_SOURCES
-    
-    health = {}
-    
-    # 1. Check System (Database)
-    try:
-        start_sys = time.time()
-        storage.get_user_by_id(1) # Simple query
-        latency = (time.time() - start_sys) * 1000
-        health["system_db"] = {"status": "Active", "latency": round(latency)}
-    except Exception:
-        health["system_db"] = {"status": "Down", "latency": 0}
-
-    # 2. Check Job Sources
-    for fn in ALL_SOURCES:
-        source_name = fn.__name__.replace("fetch_jobs_", "").replace("fetch_jobs", "remotive")
-        try:
-            # We skip actual fetching to avoid rate limits, but we can ping or assume status based on last result
-            # Ideally we have a 'ping' method in aggregator, but for now we simulate latency check
-            start = time.time()
-            # Simulate a quick network check if possible, or just return mock latency for UI demo
-            # In a real scenario we'd call a lightweight ping for each service
-            latency = (time.time() - start) * 1000 + 50 # Base sim
-            health[source_name] = {"status": "Active", "latency": round(latency)}
-        except Exception:
-            health[source_name] = {"status": "Down", "latency": 0}
-            
-    return {"apis": health}
+    from src.infrastructure.health import get_system_health
+    return {"apis": get_system_health()}
 
 
 @app.get("/admin/users")
