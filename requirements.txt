@@ -8,5 +8,6 @@ numpy
 scikit-learn
 supabase
 python-multipart
+pytz
 httpx
 gunicorn

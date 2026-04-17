@@ -1,6 +1,7 @@
 import time
 import httpx
 from datetime import datetime, timedelta
+import pytz
 from src.infrastructure.storage import get_storage
 
 # Sources to monitor
@@ -51,7 +52,7 @@ def perform_health_checks():
                     status = "offline"
         except Exception:
             status = "offline"
-            
+            now(pytz.timezone('America/Sao_Paulo')
         last_check = datetime.utcnow().isoformat()
         health_entry = {
             "api_name": name,
