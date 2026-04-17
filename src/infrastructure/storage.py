@@ -65,7 +65,8 @@ class SQLiteStorage(StorageRepository):
             password TEXT,
             resume_path TEXT,
             name TEXT,
-            birth_date TEXT
+            birth_date TEXT,
+            is_admin INTEGER DEFAULT 0
         )
         """)
         
@@ -75,6 +76,10 @@ class SQLiteStorage(StorageRepository):
             pass
         try:
             self.cursor.execute("ALTER TABLE users ADD COLUMN birth_date TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            self.cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass
 
@@ -89,12 +94,12 @@ class SQLiteStorage(StorageRepository):
         self.conn.commit()
 
     def get_user_by_id(self, user_id):
-        self.cursor.execute("SELECT id, email, password, resume_path, name, birth_date FROM users WHERE id=?", (user_id,))
+        self.cursor.execute("SELECT id, email, password, resume_path, name, birth_date, is_admin FROM users WHERE id=?", (user_id,))
         row = self.cursor.fetchone()
         return _map_sqlite_user(row)
 
     def get_user_by_email(self, email):
-        self.cursor.execute("SELECT id, email, password, resume_path, name, birth_date FROM users WHERE email=?", (email,))
+        self.cursor.execute("SELECT id, email, password, resume_path, name, birth_date, is_admin FROM users WHERE email=?", (email,))
         row = self.cursor.fetchone()
         return _map_sqlite_user(row)
 
@@ -111,6 +116,10 @@ class SQLiteStorage(StorageRepository):
 
     def update_user_profile(self, user_id, name, birth_date):
         self.cursor.execute("UPDATE users SET name=?, birth_date=? WHERE id=?", (name, birth_date, user_id))
+        self.conn.commit()
+
+    def update_user_admin_status(self, user_id, is_admin):
+        self.cursor.execute("UPDATE users SET is_admin=? WHERE id=?", (1 if is_admin else 0, user_id))
         self.conn.commit()
 
     def update_user_resume_path(self, user_id, resume_path):
@@ -156,7 +165,7 @@ class SupabaseStorage(StorageRepository):
     def get_user_by_id(self, user_id):
         response = (
             self.client.table(SUPABASE_USERS_TABLE)
-            .select("id, email, password, resume_path, name, birth_date")
+            .select("id, email, password, resume_path, name, birth_date, is_admin")
             .eq("id", user_id)
             .limit(1)
             .execute()
@@ -166,7 +175,7 @@ class SupabaseStorage(StorageRepository):
     def get_user_by_email(self, email):
         response = (
             self.client.table(SUPABASE_USERS_TABLE)
-            .select("id, email, password, resume_path, name, birth_date")
+            .select("id, email, password, resume_path, name, birth_date, is_admin")
             .eq("email", email)
             .limit(1)
             .execute()
@@ -325,7 +334,8 @@ def _map_sqlite_user(row):
         "password": row[2],
         "resume_path": row[3],
         "name": row[4],
-        "birth_date": row[5]
+        "birth_date": row[5],
+        "is_admin": bool(row[6])
     }
 
 
