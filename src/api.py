@@ -224,9 +224,9 @@ def get_admin_stats(authorization: str = Header(None)):
     _ensure_admin(authorization)
     
     try:
-        users = storage.client.table("users").select("id", count="exact").execute()
-        user_count = users.count if hasattr(users, 'count') else len(users.data)
-    except Exception:
+        user_count = storage.get_total_users_count()
+    except Exception as e:
+        print(f"Error getting stats: {e}")
         user_count = 0
         
     return {

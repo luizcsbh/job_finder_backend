@@ -58,6 +58,10 @@ class StorageRepository(ABC):
     def update_user_admin_status(self, user_id, is_admin):
         pass
 
+    @abstractmethod
+    def get_total_users_count(self):
+        pass
+
 
 class SQLiteStorage(StorageRepository):
     def __init__(self, db_path):
@@ -174,6 +178,10 @@ class SQLiteStorage(StorageRepository):
     def update_user_admin_status(self, user_id, is_admin):
         self.cursor.execute("UPDATE users SET is_admin=? WHERE id=?", (1 if is_admin else 0, user_id))
         self.conn.commit()
+
+    def get_total_users_count(self):
+        self.cursor.execute("SELECT COUNT(*) FROM users")
+        return self.cursor.fetchone()[0]
 
     def delete_user(self, user_id):
         self.cursor.execute("DELETE FROM favorites WHERE user_id=?", (user_id,))
@@ -336,12 +344,17 @@ class SupabaseStorage(StorageRepository):
 
     def list_users(self):
         from src.config import SUPABASE_USERS_TABLE
-        res = self.client.table(SUPABASE_USERS_TABLE).select("id, email, name, created_at, is_admin").execute()
+        res = self.client.table(SUPABASE_USERS_TABLE).select("id, email, name, is_admin").execute()
         return res.data
 
     def update_user_admin_status(self, user_id, is_admin):
         from src.config import SUPABASE_USERS_TABLE
         self.client.table(SUPABASE_USERS_TABLE).update({"is_admin": is_admin}).eq("id", user_id).execute()
+
+    def get_total_users_count(self):
+        from src.config import SUPABASE_USERS_TABLE
+        res = self.client.table(SUPABASE_USERS_TABLE).select("id", count="exact").execute()
+        return res.count if hasattr(res, 'count') else len(res.data)
 
     def delete_user(self, user_id):
         # Delete favorites first
