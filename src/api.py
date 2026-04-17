@@ -248,9 +248,10 @@ def list_users(authorization: str = Header(None)):
     _ensure_admin(authorization)
     
     try:
-        res = storage.client.table("users").select("id, email, name, created_at, is_admin").execute()
-        return {"users": res.data}
-    except Exception:
+        users = storage.list_users()
+        return {"users": users}
+    except Exception as e:
+        print(f"Error listing users: {e}")
         raise HTTPException(status_code=500, detail="Erro ao listar usuários")
 
 

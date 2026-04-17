@@ -47,7 +47,15 @@ class StorageRepository(ABC):
         pass
 
     @abstractmethod
+    def list_users(self):
+        pass
+
+    @abstractmethod
     def delete_user(self, user_id):
+        pass
+
+    @abstractmethod
+    def update_user_admin_status(self, user_id, is_admin):
         pass
 
 
@@ -148,6 +156,24 @@ class SQLiteStorage(StorageRepository):
         )
         self.conn.commit()
         return True
+
+    def list_users(self):
+        self.cursor.execute("SELECT id, email, name, is_admin FROM users")
+        rows = self.cursor.fetchall()
+        return [
+            {
+                "id": row[0],
+                "email": row[1],
+                "name": row[2],
+                "is_admin": bool(row[3]),
+                "created_at": None # SQLite doesn't have it by default in this schema
+            }
+            for row in rows
+        ]
+
+    def update_user_admin_status(self, user_id, is_admin):
+        self.cursor.execute("UPDATE users SET is_admin=? WHERE id=?", (1 if is_admin else 0, user_id))
+        self.conn.commit()
 
     def delete_user(self, user_id):
         self.cursor.execute("DELETE FROM favorites WHERE user_id=?", (user_id,))
@@ -307,6 +333,15 @@ class SupabaseStorage(StorageRepository):
             "job_url": job_url
         }).execute()
         return True
+
+    def list_users(self):
+        from src.config import SUPABASE_USERS_TABLE
+        res = self.client.table(SUPABASE_USERS_TABLE).select("id, email, name, created_at, is_admin").execute()
+        return res.data
+
+    def update_user_admin_status(self, user_id, is_admin):
+        from src.config import SUPABASE_USERS_TABLE
+        self.client.table(SUPABASE_USERS_TABLE).update({"is_admin": is_admin}).eq("id", user_id).execute()
 
     def delete_user(self, user_id):
         # Delete favorites first
