@@ -52,8 +52,8 @@ def perform_health_checks():
                     status = "offline"
         except Exception:
             status = "offline"
-            now(pytz.timezone('America/Sao_Paulo')
-        last_check = datetime.utcnow().isoformat()
+
+        last_check = datetime.now(pytz.timezone("America/Sao_Paulo")).isoformat()
         health_entry = {
             "api_name": name,
             "status": status,
