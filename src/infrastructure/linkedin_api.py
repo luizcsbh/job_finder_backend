@@ -8,46 +8,46 @@ import os
 from src.domain.job import Job
 from src.infrastructure.cache import cached
 
-RAPIDAPI_KEY  = os.getenv("RAPIDAPI_KEY", "")
 RAPIDAPI_HOST = "jsearch.p.rapidapi.com"
 BASE_URL      = f"https://{RAPIDAPI_HOST}/search"
-
-# Configurações via .env
-KEYWORDS = os.getenv("KEYWORDS", "developer")
-LOCATION = os.getenv("USER_LOCATION", "Brazil")
-
-HEADERS = {
-    "x-rapidapi-key":  RAPIDAPI_KEY,
-    "x-rapidapi-host": RAPIDAPI_HOST,
-}
 
 
 @cached("linkedin")
 def fetch_jobs_linkedin() -> list[Job]:
     """Busca vagas via JSearch API (inclui LinkedIn e múltiplos boards)."""
-    if not RAPIDAPI_KEY or RAPIDAPI_KEY == "sua_rapidapi_key_aqui":
+    # Fetch env vars inside function to ensure they are loaded after load_dotenv()
+    rapid_key = os.getenv("RAPIDAPI_KEY", "")
+    keywords  = os.getenv("KEYWORDS", "developer")
+    location  = os.getenv("USER_LOCATION", "Brazil")
+
+    if not rapid_key or rapid_key == "sua_rapidapi_key_aqui":
         print("[JSearch/RapidAPI] RAPIDAPI_KEY não configurada, pulando.")
         return []
 
     all_jobs: list[Job] = []
     
     # Criamos uma query combinada
-    query = f"{KEYWORDS} in {LOCATION}"
+    query = f"{keywords} in {location}"
 
     try:
+        headers = {
+            "x-rapidapi-key":  rapid_key,
+            "x-rapidapi-host": RAPIDAPI_HOST,
+        }
+        
         params = {
             "query": query,
             "page": "1",
             "num_pages": "1",
             "date_posted": "all",
-            "remote_jobs_only": "true" # Opcional: foca em vagas remotas
+            "remote_jobs_only": "true"
         }
         
         print(f"[JSearch/RapidAPI] Buscando: '{query}'...")
         
         response = requests.get(
             BASE_URL,
-            headers=HEADERS,
+            headers=headers,
             params=params,
             timeout=20,
         )

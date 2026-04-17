@@ -9,7 +9,7 @@ SOURCES = {
     "ArbeitNow":   "https://www.arbeitnow.com/api/job-board-api",
     "The Muse":    "https://www.themuse.com/api/public/jobs?page=0",
     "Jooble":      "http://jooble.org/",
-    "JobIceCream": "https://jobicecream.com/api/jobs?page=1",
+    "Jobicy":      "https://jobicy.com/api/v2/remote-jobs",
     "LinkedIn":    "https://jsearch.p.rapidapi.com/search",
     "OpenAI":      "https://api.openai.com/v1/models",
     "Supabase":    "DB_PING"

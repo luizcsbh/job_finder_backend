@@ -8,38 +8,36 @@ import json
 from src.domain.job import Job
 from src.infrastructure.cache import cached
 
-JOOBLE_KEY = os.getenv("JOOBLE_API_KEY", "")
-# Using http as per user suggestion for better compatibility in some environments
 BASE_URL = "http://jooble.org"
-
-# Configurações via .env
-KEYWORDS = os.getenv("KEYWORDS", "developer")
-LOCATION = os.getenv("USER_LOCATION", "Brazil")
 
 
 @cached("jooble")
 def fetch_jobs_jooble():
     """Busca vagas via Jooble API."""
-    if not JOOBLE_KEY or JOOBLE_KEY == "sua_jooble_api_key_aqui":
+    jooble_key = os.getenv("JOOBLE_API_KEY", "")
+    keywords   = os.getenv("KEYWORDS", "developer")
+    location   = os.getenv("USER_LOCATION", "Brazil")
+
+    if not jooble_key or jooble_key == "sua_jooble_api_key_aqui":
         print("[Jooble] API key não configurada, pulando.")
         return []
 
     try:
-        url = f"{BASE_URL}/api/{JOOBLE_KEY}"
+        url = f"{BASE_URL}/api/{jooble_key}"
         
         # Conforme sugestão do usuário: headers explícitos e payload JSON
         headers = {"Content-type": "application/json"}
         
         # Usamos a primeira keyword da lista para a busca no Jooble
-        main_keyword = KEYWORDS.split(",")[0] if KEYWORDS else "developer"
+        main_keyword = keywords.split(",")[0] if keywords else "developer"
         
         payload = {
             "keywords": main_keyword,
-            "location": LOCATION,
+            "location": location,
             "page": "1"
         }
         
-        print(f"[Jooble] Buscando vagas para '{main_keyword}' em '{LOCATION}'...")
+        print(f"[Jooble] Buscando vagas para '{main_keyword}' em '{location}'...")
         
         response = requests.post(
             url, 
