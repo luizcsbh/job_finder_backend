@@ -74,6 +74,8 @@ def fetch_jobs_linkedin() -> list[Job]:
                     description=description,
                     url=url,
                     datate_posted=item.get("job_posted_at_datetime_utc", ""),
+                    salary=salary,
+                    salaryCurrency=salaryCurrency, # pyright: ignore[reportUndefinedVariable]
                     category=item.get("job_category", ""),
                     source="LinkedIn/JSearch",
                 )

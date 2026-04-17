@@ -23,6 +23,7 @@ def fetch_jobs():
                 location=item["candidate_required_location"],
                 description=item["description"],
                 url=item["url"],
+                salary=item["salary"],
                 datate_posted=item["publication_date"],
                 category=item["category"],
                 source="Remotive"

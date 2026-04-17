@@ -35,7 +35,9 @@ def fetch_jobs_jobicy():
                     location=item.get("jobGeo", "Remote"),
                     description=item.get("jobExcerpt", ""),
                     url=url,
-                    datate_posted=item.get("jobPostedAt", ""),
+                    salary=item.get("salaryMax", ""),
+                    salaryCurrency=item.get("salaryCurrency", ""),
+                    datate_posted=item.get("publishDate", ""),
                     category=item.get("jobCategory", ""),
                     source="Jobicy"
                 )

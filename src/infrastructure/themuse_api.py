@@ -3,6 +3,7 @@ The Muse API — free, no key required.
 Docs: https://www.themuse.com/developers/api/v2
 Returns tech and professional jobs globally.
 """
+import json
 import requests
 from src.domain.job import Job
 from src.infrastructure.cache import cached
@@ -27,11 +28,15 @@ def fetch_jobs_themuse():
             if not url:
                 continue
 
+            description = item.get("contents", "")
+            if isinstance(description, (dict, list)):
+                description = json.dumps(description, ensure_ascii=False)
+
             job = Job(
                 title=item.get("name", "N/A"),
                 company=company,
-                location=locations,
-                description=item.get("contents", ""),
+                location=location,
+                description=description,
                 url=url,
                 datate_posted=item.get("publication_date", ""),
                 category=item.get("categories", []),

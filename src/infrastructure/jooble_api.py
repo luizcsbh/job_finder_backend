@@ -8,7 +8,7 @@ import json
 from src.domain.job import Job
 from src.infrastructure.cache import cached
 
-BASE_URL = "http://jooble.org"
+BASE_URL = "https://jooble.org"
 
 
 @cached("jooble")
