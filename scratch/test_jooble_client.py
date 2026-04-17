@@ -1,5 +1,6 @@
 import http.client
 import os
+import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,8 +9,7 @@ host = 'jooble.org'
 key = os.getenv("JOOBLE_API_KEY", "")
 
 if not key:
-    print("ERRO: JOOBLE_API_KEY não encontrada.")
-    exit()
+    pytest.skip("JOOBLE_API_KEY não encontrada. Configure a variável de ambiente para executar este teste.")
 
 print(f"Testando com http.client no host {host}...")
 connection = http.client.HTTPConnection(host)
