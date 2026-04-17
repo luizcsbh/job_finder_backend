@@ -30,9 +30,11 @@ def fetch_jobs_themuse():
             job = Job(
                 title=item.get("name", "N/A"),
                 company=company,
-                location=location,
+                location=locations,
                 description=item.get("contents", ""),
                 url=url,
+                datate_posted=item.get("publication_date", ""),
+                category=item.get("categories", []),
                 source="The Muse"
             )
             jobs.append(job)

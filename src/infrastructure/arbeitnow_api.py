@@ -24,6 +24,8 @@ def fetch_jobs_arbeitnow():
                 location=item["location"],
                 description=item["description"],
                 url=item["url"],
+                datate_posted=item.get("created_at", ""),
+                category=item.get("tags", []),
                 source="ArbeitNow"
             )
             jobs.append(job)

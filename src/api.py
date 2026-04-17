@@ -351,6 +351,11 @@ def get_jobs(page: int = 1, limit: int = 9, search: str = None, authorization: s
                 "ai_score": getattr(job, "ai_score", 0),
                 "source": job.source,
                 "url": job.url,
+                "location": getattr(job, "location", ""),
+                "description": getattr(job, "description", ""),
+                "datate_posted": getattr(job, "datate_posted", ""),
+                "category": getattr(job, "category", []),
+                "salary": getattr(job, "salary", ""),
             }
             for job in paginated
         ],

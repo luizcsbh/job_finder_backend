@@ -31,6 +31,9 @@ def _make_job(d: dict):
         description=d.get("description", ""),
         url=d.get("url", ""),
         source=d.get("source", ""),
+        datate_posted=d.get("datate_posted", ""),
+        category=d.get("category", []),
+        salary=d.get("salary", ""),
     )
     j.score    = d.get("score", 0)
     j.ai_score = d.get("ai_score", 0)
@@ -47,6 +50,9 @@ def _job_to_dict(job) -> dict:
         "source":      job.source,
         "score":       getattr(job, "score", 0),
         "ai_score":    getattr(job, "ai_score", 0),
+        "datate_posted": getattr(job, "datate_posted", ""),
+        "category":    getattr(job, "category", []),
+        "salary":      getattr(job, "salary", ""),
     }
 
 

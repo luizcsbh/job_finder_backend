@@ -66,6 +66,8 @@ def fetch_jobs_jooble():
                     location=item.get("location", "N/A"),
                     description=item.get("snippet", ""),
                     url=job_url,
+                    datate_posted=item.get("publication_date", ""),
+                    category=item.get("category", []),
                     source="Jooble"
                 )
             )

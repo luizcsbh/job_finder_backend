@@ -73,6 +73,8 @@ def fetch_jobs_linkedin() -> list[Job]:
                     location=location,
                     description=description,
                     url=url,
+                    datate_posted=item.get("job_posted_at_datetime_utc", ""),
+                    category=item.get("job_category", ""),
                     source="LinkedIn/JSearch",
                 )
             )
