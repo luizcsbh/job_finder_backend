@@ -11,3 +11,4 @@ python-multipart
 pytz
 httpx
 gunicorn
+sentence-transformers

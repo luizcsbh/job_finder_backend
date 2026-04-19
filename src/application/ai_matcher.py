@@ -1,22 +1,18 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, util
 
 
 def calculate_ai_scores(resume_text, jobs):
-    documents = [resume_text]
+    model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    for job in jobs:
-        documents.append(f"{job.title} {job.description}")
+    texts = [resume_text] + [f"{job.title} {job.description}" for job in jobs]
+    embeddings = model.encode(texts)
 
-    vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform(documents)
+    resume_embedding = embeddings[0]
+    job_embeddings = embeddings[1:]
 
-    resume_vector = tfidf_matrix[0]
+    similarities = util.cos_sim(resume_embedding, job_embeddings)[0]
 
     for i, job in enumerate(jobs):
-        job_vector = tfidf_matrix[i + 1]
-
-        similarity = cosine_similarity(resume_vector, job_vector)[0][0]
-        job.ai_score = round(similarity * 100, 2)
+        job.ai_score = round(similarities[i].item() * 100, 2)
 
     return jobs
